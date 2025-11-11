@@ -1,6 +1,7 @@
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
+local loadstart = os.clock()
 --GUI
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -104,7 +105,7 @@ local Window = Fluent:CreateWindow({
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = false,
-    Theme = "Dark",
+    Theme = "Amethyst",
     MinimizeKey = Enum.KeyCode.RightShift
 })
 local Tabs = {
@@ -130,10 +131,10 @@ local KillAuraTargets = Tabs.Combat:AddDropdown("KillAuraTargets", {
     Default = {"Players", "NPCs"},
 })
 KillAuraTargets:OnChanged(function(target)
-    table.clear(Targets)
+    table.clear(KillAuraTarget)
     for i, isSelected in pairs(target) do
         if isSelected then
-            table.insert(Targets, i)
+            table.insert(KillAuraTarget, i)
         end
     end
 end)
@@ -152,7 +153,7 @@ KillAura:OnChanged(function()
         if not connection then
             connection = RunService.PreRender:Connect(function()
                 local enemy, root, entityType = getNearestEntity(tonumber(KillAuraRange.Value))
-                if enemy and root and IsExistInTable(entityType, Targets) then
+                if enemy and root and IsExistInTable(entityType, KillAuraTarget) then
                     local character = localplayer.Character or localplayer.CharacterAdded:Wait()
                     local hrp = character:FindFirstChild("HumanoidRootPart")
                     local hand1 = nil
@@ -215,9 +216,10 @@ SaveManager:SetFolder("Krita/Bedwars")
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
+local elapsed = os.clock() - loadstart
 Fluent:Notify({
     Title = "Krita",
-    Content = "The script has been loaded.",
+    Content = "The script has been loaded in " .. string.format("%.2f", elapsed) .. "seconds",
     Duration = 5
 })
 SaveManager:LoadAutoloadConfig()
