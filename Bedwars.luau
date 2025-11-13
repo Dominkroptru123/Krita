@@ -16,6 +16,10 @@ local CollectionService = game:GetService("CollectionService")
 local localplayer = game.Players.LocalPlayer
 local KillAuraTarget = {}
 local NetManaged = ReplicatedStorage.rbxts_include.node_modules:FindFirstChild("@rbxts").net.out._NetManaged
+local Knit = require(ReplicatedStorage.rbxts_include.node_modules["@easy-games"].knit.src).KnitClient
+local GameUtils = {
+    BlockBreaker = Knit.Controllers.BlockBreakController.blockBreaker
+}
 --Functions
 local function IsExistInTable(var, table)
     for _, v in ipairs(table) do
@@ -44,7 +48,7 @@ local function getNearestEntity(range: number)
     local nearestCharacter = nil
     local shortestDistance = range
     local Root
-    local entityType = "NPCs" -- default value
+    local entityType = "NPCs" -- default
 
     local character = localplayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then
@@ -97,7 +101,7 @@ local function getNearestEntity(range: number)
         end
     end
 
-    return nearestCharacter, Root, entityType
+    return nearestCharacter, shortestDistance, Root, entityType
 end
 local Window = Fluent:CreateWindow({
     Title = "Krita " .. "1.0",
@@ -120,7 +124,7 @@ local KillAuraRange = Tabs.Combat:AddSlider("KillAuraRange", {
     Description = "Set max range for Kill Aura",
     Default = 27,
     Min = 16,
-    Max = 32,
+    Max = 29,
     Rounding = 0.1,
 })
 local KillAuraTargets = Tabs.Combat:AddDropdown("KillAuraTargets", {
@@ -152,8 +156,8 @@ KillAura:OnChanged(function()
     if enabled then
         if not connection then
             connection = RunService.PreRender:Connect(function()
-                local enemy, root, entityType = getNearestEntity(tonumber(KillAuraRange.Value))
-                if enemy and root and IsExistInTable(entityType, KillAuraTarget) then
+                local NearestEntity, Distance, Root, EntityType = getNearestEntity(tonumber(KillAuraRange.Value))
+                if NearestEntity and Root and IsExistInTable(EntityType, KillAuraTarget) then
                     local character = localplayer.Character or localplayer.CharacterAdded:Wait()
                     local hrp = character:FindFirstChild("HumanoidRootPart")
                     local hand1 = nil
@@ -163,24 +167,23 @@ KillAura:OnChanged(function()
                         end
                     end
                     if hrp and hand1 then
-                        --NetManaged.SetInvItem:InvokeServer({{hand = hand1}})
-                        local hrppos = hrp.Position
-                        local HitPos = root.Position
+                        local HrpPos = hrp.Position
+                        local HitPos = (math.clamp(Distance - 14.4, 10, 30) * (Root.Position - HrpPos).Unit) + HrpPos
                         NetManaged.SwordHit:FireServer({
-                            entityInstance = enemy,
+                            entityInstance = NearestEntity,
                             chargedAttack = {
                                 chargeRatio = 0
                             },
                             validate = {
                                 targetPosition = {
-                                    value = HitPos
+                                    value = Root.Position
                                 },
                                 raycast = {
-                                    cursorDirection = {value = CFrame.lookAlong(hrppos, HitPos).LookVector},
-                                    cameraPosition = {value = hrppos}
+                                    cursorDirection = {value = CFrame.lookAlong(HitPos, Root.Position).LookVector},
+                                    cameraPosition = {value = HitPos}
                                 },
                                 selfPosition = {
-                                    value = hrppos
+                                    value = HitPos
                                 }
                             },
                             weapon = hand1
@@ -205,6 +208,35 @@ AntiAFK:OnChanged(function()
             NetManaged.AfkInfo:FireServer({afk = false})
             task.wait(5)
         until not AntiAFK.Value
+    end
+end)
+local FastBreak = Tabs.Utility:AddToggle("FastBreak", {Title = "Fast Break", Default = false })
+local FastBreakCooldown = Tabs.Utility:AddSlider("FastBreakCooldown", {
+    Title = "Fast Break Cooldown",
+    Description = "Set cooldown for Fast Break",
+    Default = 1,
+    Min = 0.1,
+    Max = 3,
+    Rounding = 0.1,
+})
+local FastBreakKey = Tabs.Utility:AddKeybind("FastBreakKey", {Title = "Set keybind for Fast Break", Mode = "Toggle", Default = "",})
+FastBreakKey:OnClick(function()
+    Options.FastBreak:SetValue(FastBreakKey:GetState())
+    Fluent:Notify({
+        Title = "Fast Break",
+        Content = "Fast Break has been " .. (FastBreakKey:GetState() and "enabled" or "disabled"),
+        Duration = 1
+    })
+end)
+FastBreak:OnChanged(function()
+    local enabled = FastBreak.Value
+    if enabled then
+        repeat
+            GameUtils.BlockBreaker.cooldown = tonumber(FastBreakCooldown.Value) / 10
+            task.wait(0.5)
+        until not FastBreak.Value
+    else
+        GameUtils.BlockBreaker.cooldown = 0.3
     end
 end)
 SaveManager:SetLibrary(Fluent)
