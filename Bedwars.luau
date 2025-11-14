@@ -18,6 +18,7 @@ local KillAuraTarget = {}
 local NetManaged = ReplicatedStorage.rbxts_include.node_modules:FindFirstChild("@rbxts").net.out._NetManaged
 local Knit = require(ReplicatedStorage.rbxts_include.node_modules["@easy-games"].knit.src).KnitClient
 local GameUtils = {
+    InventoryUtil = require(ReplicatedStorage.TS.inventory["inventory-util"]).InventoryUtil,
     BlockBreaker = Knit.Controllers.BlockBreakController.blockBreaker
 }
 --Functions
@@ -103,6 +104,29 @@ local function getNearestEntity(range: number)
 
     return nearestCharacter, shortestDistance, Root, entityType
 end
+local function GetInventory(Player)
+    Player = Player or localplayer
+    return GameUtils.InventoryUtil.getInventory(Player)
+end
+local function SwitchTo(Item)
+    if not Item then
+        return
+    end
+    local CurrentItem: ObjectValue? = localplayer.Character:FindFirstChild("HandInvItem")
+    if CurrentItem and CurrentItem:IsA("ObjectValue") then
+        CurrentItem = CurrentItem.Value
+    else
+        local Inventory = GetInventory()
+        if Inventory and Inventory.hand then
+            CurrentItem = Inventory.hand.tool
+        end
+    end
+    if CurrentItem == Item then
+        return
+    end
+    NetManaged.SetInvItem:InvokeServer({hand = Item})
+end
+--Fluent
 local Window = Fluent:CreateWindow({
     Title = "Krita " .. "1.0",
     SubTitle = "by Dominkroptru123",
@@ -127,6 +151,7 @@ local KillAuraRange = Tabs.Combat:AddSlider("KillAuraRange", {
     Max = 29,
     Rounding = 0.1,
 })
+local KillAuraAutoSwitch = Tabs.Combat:AddToggle("KillAuraAutoSwitch", {Title = "Kill Aura Auto Switch", Default = false })
 local KillAuraTargets = Tabs.Combat:AddDropdown("KillAuraTargets", {
     Title = "Kill Aura Targets",
     Description = "",
@@ -160,13 +185,18 @@ KillAura:OnChanged(function()
                 if NearestEntity and Root and IsExistInTable(EntityType, KillAuraTarget) then
                     local character = localplayer.Character or localplayer.CharacterAdded:Wait()
                     local hrp = character:FindFirstChild("HumanoidRootPart")
-                    local hand1 = nil
+                    local sword = nil
                     for _, i in ipairs(ReplicatedStorage.Inventories:FindFirstChild(localplayer.Name):GetChildren()) do
                         if string.find(string.lower(i.Name), "sword") then
-                            hand1 = i
+                            sword = i
+                            break
                         end
                     end
-                    if hrp and hand1 then
+                    if hrp and sword then
+                        local Hand = GetInventory().hand
+                        if KillAuraAutoSwitch.Value and (not Hand or Hand and (not Hand.tool or Hand.tool ~= sword)) then
+                            SwitchTo(sword)
+                        end
                         local HrpPos = hrp.Position
                         local HitPos = (math.clamp(Distance - 14.4, 10, 30) * (Root.Position - HrpPos).Unit) + HrpPos
                         NetManaged.SwordHit:FireServer({
@@ -186,7 +216,7 @@ KillAura:OnChanged(function()
                                     value = HitPos
                                 }
                             },
-                            weapon = hand1
+                            weapon = sword
                         })
                     end
                 end
@@ -210,14 +240,15 @@ AntiAFK:OnChanged(function()
         until not AntiAFK.Value
     end
 end)
+--Fast Break
 local FastBreak = Tabs.Utility:AddToggle("FastBreak", {Title = "Fast Break", Default = false })
 local FastBreakCooldown = Tabs.Utility:AddSlider("FastBreakCooldown", {
     Title = "Fast Break Cooldown",
     Description = "Set cooldown for Fast Break",
-    Default = 1,
-    Min = 0.1,
-    Max = 3,
-    Rounding = 0.1,
+    Default = 0.2,
+    Min = 0.01,
+    Max = 0.3,
+    Rounding = 10,
 })
 local FastBreakKey = Tabs.Utility:AddKeybind("FastBreakKey", {Title = "Set keybind for Fast Break", Mode = "Toggle", Default = "",})
 FastBreakKey:OnClick(function()
@@ -232,11 +263,41 @@ FastBreak:OnChanged(function()
     local enabled = FastBreak.Value
     if enabled then
         repeat
-            GameUtils.BlockBreaker.cooldown = tonumber(FastBreakCooldown.Value) / 10
+            GameUtils.BlockBreaker.cooldown = tonumber(FastBreakCooldown.Value)
             task.wait(0.5)
         until not FastBreak.Value
     else
         GameUtils.BlockBreaker.cooldown = 0.3
+    end
+end)
+--Far Break
+local FarBreak = Tabs.Utility:AddToggle("FarBreak", {Title = "Far Break", Default = false })
+local FarBreakRange = Tabs.Utility:AddSlider("FarBreakRange", {
+    Title = "Far Break Range",
+    Description = "Set range for Fast Break",
+    Default = 25,
+    Min = 18,
+    Max = 50,
+    Rounding = 0.1,
+})
+local FarBreakKey = Tabs.Utility:AddKeybind("FarBreakKey", {Title = "Set keybind for Far Break", Mode = "Toggle", Default = "",})
+FarBreakKey:OnClick(function()
+    Options.FarBreak:SetValue(FarBreakKey:GetState())
+    Fluent:Notify({
+        Title = "Far Break",
+        Content = "Far Break has been " .. (FarBreakKey:GetState() and "enabled" or "disabled"),
+        Duration = 1
+    })
+end)
+FarBreak:OnChanged(function()
+    local enabled = FarBreak.Value
+    if enabled then
+        repeat
+            GameUtils.BlockBreaker.range = tonumber(FarBreakRange.Value)
+            task.wait(0.5)
+        until not FarBreak.Value
+    else
+        GameUtils.BlockBreaker.range = 18
     end
 end)
 SaveManager:SetLibrary(Fluent)
