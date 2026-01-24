@@ -13,13 +13,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 --Variables
-local localplayer = game.Players.LocalPlayer
+local LocalPlayer = game.Players.LocalPlayer
 local KillAuraTarget = {}
 local NetManaged = ReplicatedStorage.rbxts_include.node_modules:FindFirstChild("@rbxts").net.out._NetManaged
 local Knit = require(ReplicatedStorage.rbxts_include.node_modules["@easy-games"].knit.src).KnitClient
 local GameUtils = {
     InventoryUtil = require(ReplicatedStorage.TS.inventory["inventory-util"]).InventoryUtil,
-    BlockBreaker = Knit.Controllers.BlockBreakController.blockBreaker
+    BlockBreaker = Knit.Controllers.BlockBreakController.blockBreaker,
+    Knockback = require(ReplicatedStorage.TS.damage["knockback-util"]).KnockbackUtil
 }
 --Functions
 local function IsExistInTable(var, table)
@@ -51,7 +52,7 @@ local function getNearestEntity(range: number)
     local Root
     local entityType = "NPCs" -- default
 
-    local character = localplayer.Character
+    local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then
         return nil
     end
@@ -59,7 +60,7 @@ local function getNearestEntity(range: number)
     for _, v in CollectionService:GetTagged("entity") do
         local player = Players:GetPlayerFromCharacter(v)
         if player then
-            if player.Team == localplayer.Team then
+            if player.Team == LocalPlayer.Team then
                 continue
             end
             if not IsAlive(player, false) then
@@ -105,14 +106,14 @@ local function getNearestEntity(range: number)
     return nearestCharacter, shortestDistance, Root, entityType
 end
 local function GetInventory(Player)
-    Player = Player or localplayer
+    Player = Player or LocalPlayer
     return GameUtils.InventoryUtil.getInventory(Player)
 end
 local function SwitchTo(Item)
     if not Item then
         return
     end
-    local CurrentItem: ObjectValue? = localplayer.Character:FindFirstChild("HandInvItem")
+    local CurrentItem: ObjectValue? = LocalPlayer.Character:FindFirstChild("HandInvItem")
     if CurrentItem and CurrentItem:IsA("ObjectValue") then
         CurrentItem = CurrentItem.Value
     else
@@ -183,10 +184,10 @@ KillAura:OnChanged(function()
             connection = RunService.PreRender:Connect(function()
                 local NearestEntity, Distance, Root, EntityType = getNearestEntity(tonumber(KillAuraRange.Value))
                 if NearestEntity and Root and IsExistInTable(EntityType, KillAuraTarget) then
-                    local character = localplayer.Character or localplayer.CharacterAdded:Wait()
+                    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
                     local hrp = character:FindFirstChild("HumanoidRootPart")
                     local sword = nil
-                    for _, i in ipairs(ReplicatedStorage.Inventories:FindFirstChild(localplayer.Name):GetChildren()) do
+                    for _, i in ipairs(ReplicatedStorage.Inventories:FindFirstChild(LocalPlayer.Name):GetChildren()) do
                         if string.find(string.lower(i.Name), "sword") then
                             sword = i
                             break
@@ -238,6 +239,81 @@ AntiAFK:OnChanged(function()
             NetManaged.AfkInfo:FireServer({afk = false})
             task.wait(5)
         until not AntiAFK.Value
+    end
+end)
+--Knockback
+local OldApply = nil
+local Knockback = Tabs.Utility:AddToggle("Knockback", {Title = "Knockback", Default = false })
+local KnockbackValue = Tabs.Utility:AddSlider("KnockbackValue", {
+    Title = "Knockback Value",
+    Description = "Set value for Knockback",
+    Default = 0,
+    Min = 0.01,
+    Max = 30,
+    Rounding = 1,
+})
+Knockback:OnChanged(function()
+    local enabled = Knockback.Value
+    if enabled then
+        OldApply = GameUtils.Knockback.applyKnockback
+        GameUtils.Knockback.applyKnockback = function(Part: BasePart, RealKnockback: number, ...)
+            if KnockbackValue.Value == 0 then return end
+            return OldApply(Part, KnockbackValue.Value, ...)
+        end
+    else
+        if OldApply then
+            GameUtils.Knockback.applyKnockback = OldApply
+        end
+    end
+end)
+--No Fall
+local FallRay: RaycastParams, Power: number = RaycastParams.new(), 0
+local function Physics(Delta: number)
+    local Root: BasePart = LocalPlayer.Character.PrimaryPart
+    local Velocity: Vector3 = Root.AssemblyLinearVelocity
+    Root.AssemblyLinearVelocity = Vector3.new(Velocity.X, -85, Velocity.Z)
+    Root.CFrame += Vector3.new(0, Delta * Power, 0)
+    Power -= Delta * workspace.Gravity
+end
+local function MakeRay(Char: Model)
+    repeat task.wait() until IsAlive(LocalPlayer,false)
+    FallRay.FilterType = Enum.RaycastFilterType.Exclude
+    FallRay.CollisionGroup = Char.PrimaryPart.CollisionGroup
+    FallRay.FilterDescendantsInstances = {Char, workspace.CurrentCamera}
+end
+local NoFall = Tabs.Utility:AddToggle("NoFall", {Title = "No Fall", Default = false })
+NoFall:OnChanged(function()
+    local enabled = NoFall.Value
+    if enabled then
+        if not CharConnection then
+            CharConnection = LocalPlayer.CharacterAdded:Connect(MakeRay)
+        end
+        if IsAlive(LocalPlayer, false) then
+            MakeRay(LocalPlayer.Character)
+        end
+        if not connection2 then
+            connection2 = RunService.PreRender:Connect(function(delta)
+                if not IsAlive(LocalPlayer,false) then return end
+                local Char = LocalPlayer.Character
+                local Root = Char.PrimaryPart
+                if Root.AssemblyLinearVelocity.Y >= -80 then
+                    Power = 0
+                    return
+                end
+                local _, Size: Vector3 = Char:GetBoundingBox()
+                local Raycast: RaycastResult = workspace:Raycast(Root.Position, Vector3.new(0, -(Size.Y / 2), 0), FallRay)
+                if not Raycast then
+                    Physics(delta)
+                else
+                    Power = 0
+                end
+            end)
+        end
+    else
+        if connection2 then
+            connection2:Disconnect()
+            connection2 = nil
+        end
     end
 end)
 --Fast Break
