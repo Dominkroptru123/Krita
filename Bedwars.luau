@@ -46,7 +46,7 @@ local function IsAlive(Player, IsCharacter)
     end
     return false
 end
-local function getNearestEntity(range: number)
+local function GetNearestEntity(range: number)
     local nearestCharacter = nil
     local shortestDistance = range
     local Root
@@ -150,7 +150,7 @@ local KillAuraRange = Tabs.Combat:AddSlider("KillAuraRange", {
     Default = 27,
     Min = 16,
     Max = 29,
-    Rounding = 0.1,
+    Rounding = 0.1
 })
 local KillAuraAutoSwitch = Tabs.Combat:AddToggle("KillAuraAutoSwitch", {Title = "Kill Aura Auto Switch", Default = false })
 local KillAuraTargets = Tabs.Combat:AddDropdown("KillAuraTargets", {
@@ -158,7 +158,7 @@ local KillAuraTargets = Tabs.Combat:AddDropdown("KillAuraTargets", {
     Description = "",
     Values = {"Players", "NPCs"},
     Multi = true,
-    Default = {"Players", "NPCs"},
+    Default = {"Players", "NPCs"}
 })
 KillAuraTargets:OnChanged(function(target)
     table.clear(KillAuraTarget)
@@ -168,7 +168,7 @@ KillAuraTargets:OnChanged(function(target)
         end
     end
 end)
-local KillAuraKey = Tabs.Combat:AddKeybind("KillAuraKey", {Title = "Set keybind for Kill Aura", Mode = "Toggle", Default = "",})
+local KillAuraKey = Tabs.Combat:AddKeybind("KillAuraKey", {Title = "Set keybind for Kill Aura", Mode = "Toggle", Default = ""})
 KillAuraKey:OnClick(function()
     Options.KillAura:SetValue(KillAuraKey:GetState())
     Fluent:Notify({
@@ -182,7 +182,7 @@ KillAura:OnChanged(function()
     if enabled then
         if not connection then
             connection = RunService.PreRender:Connect(function()
-                local NearestEntity, Distance, Root, EntityType = getNearestEntity(tonumber(KillAuraRange.Value))
+                local NearestEntity, Distance, Root, EntityType = GetNearestEntity(tonumber(KillAuraRange.Value))
                 if NearestEntity and Root and IsExistInTable(EntityType, KillAuraTarget) then
                     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
                     local hrp = character:FindFirstChild("HumanoidRootPart")
@@ -250,7 +250,7 @@ local KnockbackValue = Tabs.Utility:AddSlider("KnockbackValue", {
     Default = 0,
     Min = 0.01,
     Max = 30,
-    Rounding = 1,
+    Rounding = 1
 })
 Knockback:OnChanged(function()
     local enabled = Knockback.Value
@@ -324,9 +324,9 @@ local FastBreakCooldown = Tabs.Utility:AddSlider("FastBreakCooldown", {
     Default = 0.2,
     Min = 0.01,
     Max = 0.3,
-    Rounding = 10,
+    Rounding = 10
 })
-local FastBreakKey = Tabs.Utility:AddKeybind("FastBreakKey", {Title = "Set keybind for Fast Break", Mode = "Toggle", Default = "",})
+local FastBreakKey = Tabs.Utility:AddKeybind("FastBreakKey", {Title = "Set keybind for Fast Break", Mode = "Toggle", Default = ""})
 FastBreakKey:OnClick(function()
     Options.FastBreak:SetValue(FastBreakKey:GetState())
     Fluent:Notify({
@@ -354,9 +354,9 @@ local FarBreakRange = Tabs.Utility:AddSlider("FarBreakRange", {
     Default = 25,
     Min = 18,
     Max = 50,
-    Rounding = 0.1,
+    Rounding = 0.1
 })
-local FarBreakKey = Tabs.Utility:AddKeybind("FarBreakKey", {Title = "Set keybind for Far Break", Mode = "Toggle", Default = "",})
+local FarBreakKey = Tabs.Utility:AddKeybind("FarBreakKey", {Title = "Set keybind for Far Break", Mode = "Toggle", Default = ""})
 FarBreakKey:OnClick(function()
     Options.FarBreak:SetValue(FarBreakKey:GetState())
     Fluent:Notify({
