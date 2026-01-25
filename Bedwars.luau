@@ -24,6 +24,10 @@ local GameUtils = {
     Knockback = require(ReplicatedStorage.TS.damage["knockback-util"]).KnockbackUtil,
     Projectile = Knit.Controllers.ProjectileController
 }
+--RS
+local connection
+local connection2
+local CharConnection
 --Functions
 local function GetSword()
     for _, i in ipairs(ReplicatedStorage.Inventories:FindFirstChild(LocalPlayer.Name):GetChildren()) do
@@ -58,8 +62,8 @@ local function IsAlive(Player, IsCharacter)
 end
 local function GetEntities()
     local Entities = {}
-    for i,v in CollectionService:GetTagged("entity") do
-        local Humanoid: Humanoid = v:FindFirstChild("Humanoid")
+    for i,v in ipairs(CollectionService:GetTagged("entity")) do
+        local Humanoid = v:FindFirstChild("Humanoid")
         table.insert(Entities, {
             Entity = v,
             Player = Players:GetPlayerFromCharacter(v),
@@ -70,26 +74,25 @@ local function GetEntities()
             Type = CollectionService:GetTags(v)[3]
         })
     end
-
     return Entities
 end
 local function GetNearestEntity(range)
     local nearestCharacter = nil
     local shortestDistance = range
     local Root
-    local entityType = "NPCs" -- default
+    local entityType = "NPCs"
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then
         return nil
     end
-    for _, v in CollectionService:GetTagged("entity") do
+    for _, v in ipairs(CollectionService:GetTagged("entity")) do
         local player = Players:GetPlayerFromCharacter(v)
         if player then
             if player.Team == LocalPlayer.Team then
                 continue
             end
             if not IsAlive(player, false) then
-                continue -- skip dead players
+                continue
             end
         end
         local myPosition = character.HumanoidRootPart.Position
@@ -205,7 +208,7 @@ KillAura:OnChanged(function()
         if not connection then
             connection = RunService.PreRender:Connect(function()
                 local NearestEntity, Distance, Root, EntityType = GetNearestEntity(tonumber(KillAuraRange.Value))
-                if NearestEntity and Root and IsExistInTable(EntityType, KillAuraTarget) and IsAlive(LocalPlayer) then
+                if NearestEntity and Root and IsExistInTable(EntityType, KillAuraTarget) and IsAlive(LocalPlayer, false) then
                     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
                     local hrp = character:FindFirstChild("HumanoidRootPart")
                     local sword = GetSword()
@@ -299,6 +302,17 @@ ProjectileAimbotTargets:OnChanged(function(target)
         end
     end
 end)
+local ProjectileAimbotDistance = Tabs.Combat:AddSlider("ProjectileAimbotDistance", {
+    Title = "Projectile Aimbot Distance",
+    Description = "Set distance for Projectile Aimbot",
+    Default = 200,
+    Min = 100,
+    Max = 250,
+    Rounding = 0.1
+})
+ProjectileAimbotDistance:OnChanged(function(Value)
+    ProjAimbotData.Settings.Distance = tonumber(Value)
+end)
 ProjectileAimbot:OnChanged(function()
     if ProjectileAimbot.Value then
         local Circle = Drawing.new("Circle")
@@ -320,7 +334,7 @@ ProjectileAimbot:OnChanged(function()
                     local Type = ent.Player and "Players" or "NPCs"
                     if not table.find(ProjAimbotData.Settings.Targets, Type) then continue end
                     if Type == "Players" then
-                        if ent.Team == LocalPlayer.Team then
+                        if ent.Player.Team == LocalPlayer.Team then
                             continue
                         end
                     end
@@ -366,7 +380,7 @@ ProjectileAimbot:OnChanged(function()
                 return ProjAimbotData.Data.Old(proj,data,line,start,pos)
             end
             Launch += data.fromPositionOffset or Vector3.zero
-            local Part = Target.PrimaryPart
+            local Part = Target:FindFirstChild(ProjAimbotData.Settings.TargetPart) or Target.PrimaryPart
             local Vel = Part.Velocity or Vector3.zero
             local Humanoid = Target:FindFirstChildOfClass("Humanoid")
             local Y = Humanoid and Part.Position.Y + Humanoid.HipHeight or Part.Position.Y
@@ -418,7 +432,7 @@ Knockback:OnChanged(function()
     local enabled = Knockback.Value
     if enabled then
         OldApply = GameUtils.Knockback.applyKnockback
-        GameUtils.Knockback.applyKnockback = function(Part: BasePart, RealKnockback: number, ...)
+        GameUtils.Knockback.applyKnockback = function(Part, RealKnockback, ...)
             if KnockbackValue.Value == 0 then return end
             return OldApply(Part, KnockbackValue.Value, ...)
         end
@@ -429,15 +443,15 @@ Knockback:OnChanged(function()
     end
 end)
 --No Fall
-local FallRay: RaycastParams, Power: number = RaycastParams.new(), 0
-local function Physics(Delta: number)
-    local Root: BasePart = LocalPlayer.Character.PrimaryPart
-    local Velocity: Vector3 = Root.AssemblyLinearVelocity
+local FallRay, Power = RaycastParams.new(), 0
+local function Physics(Delta)
+    local Root = LocalPlayer.Character.PrimaryPart
+    local Velocity = Root.AssemblyLinearVelocity
     Root.AssemblyLinearVelocity = Vector3.new(Velocity.X, -85, Velocity.Z)
     Root.CFrame += Vector3.new(0, Delta * Power, 0)
     Power -= Delta * workspace.Gravity
 end
-local function MakeRay(Char: Model)
+local function MakeRay(Char)
     repeat task.wait() until IsAlive(LocalPlayer,false)
     FallRay.FilterType = Enum.RaycastFilterType.Exclude
     FallRay.CollisionGroup = Char.PrimaryPart.CollisionGroup
@@ -462,8 +476,8 @@ NoFall:OnChanged(function()
                     Power = 0
                     return
                 end
-                local _, Size: Vector3 = Char:GetBoundingBox()
-                local Raycast: RaycastResult = workspace:Raycast(Root.Position, Vector3.new(0, -(Size.Y / 2), 0), FallRay)
+                local _, Size = Char:GetBoundingBox()
+                local Raycast = workspace:Raycast(Root.Position, Vector3.new(0, -(Size.Y / 2), 0), FallRay)
                 if not Raycast then
                     Physics(delta)
                 else
