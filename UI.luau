@@ -1,396 +1,394 @@
+--[[ 
+    KRITA UI LIBRARY - Night Replica (Purple Edition)
+    "100% Visual Replica of Night UI with Simplified Code"
+]]
+
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
-local HttpService = game:GetService("HttpService")
 
-local Krita = {
-    Flags = {},
-    Theme = {
-        Accent = Color3.fromRGB(160, 100, 255), -- Purple Krita Theme
-        Background = Color3.fromRGB(20, 20, 20),
-        Section = Color3.fromRGB(25, 25, 25),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(150, 150, 150),
-        Outline = Color3.fromRGB(50, 50, 50)
-    },
-    Folder = "KritaConfig"
+local Krita = {}
+
+--// Theme Configuration
+local Theme = {
+    Main = Color3.fromRGB(18, 18, 18),       -- Dark Background
+    Sidebar = Color3.fromRGB(12, 12, 12),    -- Darker Sidebar
+    Accent = Color3.fromRGB(155, 80, 255),   -- Purple (Krita)
+    Text = Color3.fromRGB(240, 240, 240),
+    TextDim = Color3.fromRGB(120, 120, 120),
+    ItemBG = Color3.fromRGB(25, 25, 25),     -- Module Background
+    ItemStroke = Color3.fromRGB(40, 40, 40)
 }
 
-local Library = Krita
-local Connections = {}
-
---// Utility //--
-local function MakeDraggable(topbarObject, object)
-    local Dragging, DragInput, DragStart, StartPos
-    table.insert(Connections, topbarObject.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            Dragging = true
-            DragStart = input.Position
-            StartPos = object.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then Dragging = false end
-            end)
-        end
-    end))
-    table.insert(Connections, topbarObject.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then DragInput = input end
-    end))
-    table.insert(Connections, UserInputService.InputChanged:Connect(function(input)
-        if input == DragInput and Dragging then
-            local Delta = input.Position - DragStart
-            object.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
-        end
-    end))
+--// Utility
+local function CreateCorner(parent, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 6)
+    corner.Parent = parent
+    return corner
 end
 
---// Config System //--
-function Library:SaveConfig(name)
-    if not isfolder(Library.Folder) then makefolder(Library.Folder) end
-    local json = HttpService:JSONEncode(Library.Flags)
-    writefile(Library.Folder .. "/" .. name .. ".json", json)
+local function CreateStroke(parent, color, thickness)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or Theme.ItemStroke
+    stroke.Thickness = thickness or 1
+    stroke.Parent = parent
+    return stroke
 end
 
-function Library:LoadConfig(name)
-    if isfile(Library.Folder .. "/" .. name .. ".json") then
-        local data = HttpService:JSONDecode(readfile(Library.Folder .. "/" .. name .. ".json"))
-        for flag, value in pairs(data) do
-            if Library.Flags[flag] ~= nil then
-                -- Here you would trigger the callback, simplified for this replica to just set value
-                Library.Flags[flag] = value
-                -- Note: In a full replica, you'd need to find the element and update its visual state here
-            end
-        end
-    end
-end
-
-function Library:Unload()
-    for _, conn in pairs(Connections) do conn:Disconnect() end
-    if game.CoreGui:FindFirstChild("KritaUI") then
-        game.CoreGui.KritaUI:Destroy()
-    end
-end
-
---// Main UI //--
-function Library:Window(options)
-    local Name = options.Name or "Krita"
+function Krita:CreateWindow(options)
+    local WindowName = options.Name or "Krita"
     
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "KritaUI"
-    ScreenGui.Parent = CoreGui
+    ScreenGui.Name = "KritaNightReplica"
+    ScreenGui.Parent = RunService:IsStudio() and game.Players.LocalPlayer.PlayerGui or CoreGui
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    local Main = Instance.new("Frame")
-    Main.Name = "Main"
-    Main.Parent = ScreenGui
-    Main.BackgroundColor3 = Library.Theme.Background
-    Main.BorderColor3 = Library.Theme.Accent
-    Main.BorderSizePixel = 1
-    Main.Position = UDim2.new(0.5, -275, 0.5, -175)
-    Main.Size = UDim2.new(0, 550, 0, 350)
+    -- Main Container
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Parent = ScreenGui
+    MainFrame.BackgroundColor3 = Theme.Main
+    MainFrame.Position = UDim2.new(0.5, -350, 0.5, -225)
+    MainFrame.Size = UDim2.new(0, 700, 0, 450)
+    MainFrame.ClipsDescendants = true
+    CreateCorner(MainFrame, 10)
+
+    -- Dragging Logic
+    local dragging, dragInput, dragStart, startPos
+    MainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    MainFrame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    -- Sidebar (Left)
+    local Sidebar = Instance.new("Frame")
+    Sidebar.Name = "Sidebar"
+    Sidebar.Parent = MainFrame
+    Sidebar.BackgroundColor3 = Theme.Sidebar
+    Sidebar.Size = UDim2.new(0, 180, 1, 0)
+    Sidebar.BorderSizePixel = 0
+    CreateCorner(Sidebar, 10)
     
-    local TopBar = Instance.new("Frame")
-    TopBar.Name = "TopBar"
-    TopBar.Parent = Main
-    TopBar.BackgroundColor3 = Library.Theme.Section
-    TopBar.BorderSizePixel = 0
-    TopBar.Size = UDim2.new(1, 0, 0, 30)
-    
-    local Title = Instance.new("TextLabel")
-    Title.Parent = TopBar
-    Title.BackgroundTransparency = 1
-    Title.Position = UDim2.new(0, 10, 0, 0)
-    Title.Size = UDim2.new(0, 200, 1, 0)
-    Title.Font = Enum.Font.Code
-    Title.Text = Name
-    Title.TextColor3 = Library.Theme.Accent
-    Title.TextSize = 14
-    Title.TextXAlignment = Enum.TextXAlignment.Left
+    -- Fix Sidebar Corner (Left side rounded only logic visually masked by container)
+    local SidebarCover = Instance.new("Frame") -- Covers right corners of sidebar
+    SidebarCover.Parent = Sidebar
+    SidebarCover.BackgroundColor3 = Theme.Sidebar
+    SidebarCover.BorderSizePixel = 0
+    SidebarCover.Position = UDim2.new(1, -10, 0, 0)
+    SidebarCover.Size = UDim2.new(0, 10, 1, 0)
+    SidebarCover.ZIndex = 0
 
-    -- Decoration Line
-    local Line = Instance.new("Frame")
-    Line.Parent = TopBar
-    Line.BackgroundColor3 = Library.Theme.Accent
-    Line.BorderSizePixel = 0
-    Line.Position = UDim2.new(0, 0, 1, 0)
-    Line.Size = UDim2.new(1, 0, 0, 1)
+    -- Logo
+    local Logo = Instance.new("TextLabel")
+    Logo.Name = "Logo"
+    Logo.Parent = Sidebar
+    Logo.BackgroundTransparency = 1
+    Logo.Position = UDim2.new(0, 20, 0, 20)
+    Logo.Size = UDim2.new(0, 140, 0, 30)
+    Logo.Font = Enum.Font.GothamBold
+    Logo.Text = WindowName
+    Logo.TextColor3 = Theme.Text
+    Logo.TextSize = 22
+    Logo.TextXAlignment = Enum.TextXAlignment.Left
 
-    MakeDraggable(TopBar, Main)
-
-    local TabContainer = Instance.new("ScrollingFrame")
-    TabContainer.Name = "Tabs"
-    TabContainer.Parent = Main
-    TabContainer.Active = true
-    TabContainer.BackgroundColor3 = Library.Theme.Section
-    TabContainer.BorderSizePixel = 0
-    TabContainer.Position = UDim2.new(0, 0, 0, 31)
-    TabContainer.Size = UDim2.new(0, 120, 1, -31)
-    TabContainer.ScrollBarThickness = 0
+    -- Tabs Container
+    local TabButtonContainer = Instance.new("Frame")
+    TabButtonContainer.Parent = Sidebar
+    TabButtonContainer.BackgroundTransparency = 1
+    TabButtonContainer.Position = UDim2.new(0, 10, 0, 70)
+    TabButtonContainer.Size = UDim2.new(1, -20, 1, -80)
 
     local TabListLayout = Instance.new("UIListLayout")
-    TabListLayout.Parent = TabContainer
+    TabListLayout.Parent = TabButtonContainer
     TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    TabListLayout.Padding = UDim.new(0, 0)
+    TabListLayout.Padding = UDim.new(0, 8)
 
-    local PageContainer = Instance.new("Frame")
-    PageContainer.Name = "Pages"
-    PageContainer.Parent = Main
-    PageContainer.BackgroundTransparency = 1
-    PageContainer.Position = UDim2.new(0, 130, 0, 40)
-    PageContainer.Size = UDim2.new(1, -140, 1, -50)
+    -- Content Area (Right)
+    local ContentArea = Instance.new("Frame")
+    ContentArea.Name = "ContentArea"
+    ContentArea.Parent = MainFrame
+    ContentArea.BackgroundColor3 = Theme.Main
+    ContentArea.BackgroundTransparency = 1
+    ContentArea.Position = UDim2.new(0, 190, 0, 10)
+    ContentArea.Size = UDim2.new(1, -200, 1, -20)
+    
+    local Window = {
+        Tabs = {}
+    }
 
-    local WindowLogic = {}
-    local FirstTab = true
+    local firstTab = true
 
-    function WindowLogic:Tab(name)
-        local TabButton = Instance.new("TextButton")
-        TabButton.Name = name
-        TabButton.Parent = TabContainer
-        TabButton.BackgroundColor3 = Library.Theme.Section
-        TabButton.BorderSizePixel = 0
-        TabButton.Size = UDim2.new(1, 0, 0, 35)
-        TabButton.Font = Enum.Font.Code
-        TabButton.Text = name
-        TabButton.TextColor3 = Library.Theme.TextDim
-        TabButton.TextSize = 13
+    function Window:Tab(name, iconId)
+        local Tab = {
+            Name = name,
+            Items = {}
+        }
 
+        -- Tab Button
+        local TabBtn = Instance.new("TextButton")
+        TabBtn.Name = name
+        TabBtn.Parent = TabButtonContainer
+        TabBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TabBtn.BackgroundTransparency = 1 -- Default hidden
+        TabBtn.Size = UDim2.new(1, 0, 0, 40)
+        TabBtn.AutoButtonColor = false
+        TabBtn.Text = ""
+        CreateCorner(TabBtn, 8)
+
+        local TabTitle = Instance.new("TextLabel")
+        TabTitle.Parent = TabBtn
+        TabTitle.BackgroundTransparency = 1
+        TabTitle.Position = UDim2.new(0, 15, 0, 0)
+        TabTitle.Size = UDim2.new(1, -15, 1, 0)
+        TabTitle.Font = Enum.Font.GothamMedium
+        TabTitle.Text = name
+        TabTitle.TextColor3 = Theme.TextDim
+        TabTitle.TextSize = 14
+        TabTitle.TextXAlignment = Enum.TextXAlignment.Left
+        TabTitle.ZIndex = 2
+
+        -- Selected Indicator (The blue/purple background)
+        local TabBG = Instance.new("Frame")
+        TabBG.Parent = TabBtn
+        TabBG.BackgroundColor3 = Theme.Accent
+        TabBG.Size = UDim2.new(1, 0, 1, 0)
+        TabBG.BackgroundTransparency = 1
+        TabBG.ZIndex = 1
+        CreateCorner(TabBG, 8)
+
+        -- Tab Content Page
         local Page = Instance.new("ScrollingFrame")
-        Page.Name = name .. "_Page"
-        Page.Parent = PageContainer
+        Page.Name = name .. "Page"
+        Page.Parent = ContentArea
         Page.BackgroundTransparency = 1
         Page.Size = UDim2.new(1, 0, 1, 0)
         Page.ScrollBarThickness = 2
+        Page.ScrollBarImageColor3 = Theme.Accent
         Page.Visible = false
-        
-        -- Two columns (Left/Right) logic simplified to single list for "simpler replica" 
-        -- but styled to look like Groupboxes
+
         local PageLayout = Instance.new("UIListLayout")
         PageLayout.Parent = Page
         PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
         PageLayout.Padding = UDim.new(0, 10)
-        
+
         PageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             Page.CanvasSize = UDim2.new(0, 0, 0, PageLayout.AbsoluteContentSize.Y + 10)
         end)
 
-        if FirstTab then
+        -- Tab Selection Logic
+        local function Activate()
+            -- Reset all tabs
+            for _, btn in pairs(TabButtonContainer:GetChildren()) do
+                if btn:IsA("TextButton") then
+                    TweenService:Create(btn.Frame, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+                    TweenService:Create(btn.TextLabel, TweenInfo.new(0.2), {TextColor3 = Theme.TextDim}):Play()
+                end
+            end
+            for _, p in pairs(ContentArea:GetChildren()) do
+                if p:IsA("ScrollingFrame") then p.Visible = false end
+            end
+
+            -- Activate this tab
             Page.Visible = true
-            TabButton.TextColor3 = Library.Theme.Text
-            TabButton.BackgroundColor3 = Library.Theme.Background -- Visual indicator
-            FirstTab = false
+            TweenService:Create(TabBG, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
+            TweenService:Create(TabTitle, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
         end
 
-        TabButton.MouseButton1Click:Connect(function()
-            for _, p in pairs(PageContainer:GetChildren()) do p.Visible = false end
-            for _, t in pairs(TabContainer:GetChildren()) do 
-                if t:IsA("TextButton") then 
-                    t.TextColor3 = Library.Theme.TextDim 
-                    t.BackgroundColor3 = Library.Theme.Section
-                end 
+        TabBtn.MouseButton1Click:Connect(Activate)
+
+        if firstTab then
+            Activate()
+            firstTab = false
+        end
+
+        -- ELEMENTS --
+
+        function Tab:Toggle(options)
+            local toggleName = options.Name or "Toggle"
+            local default = options.Default or false
+            local callback = options.Callback or function() end
+            
+            local Toggled = default
+
+            local ToggleFrame = Instance.new("TextButton")
+            ToggleFrame.Name = toggleName
+            ToggleFrame.Parent = Page
+            ToggleFrame.BackgroundColor3 = Theme.ItemBG
+            ToggleFrame.Size = UDim2.new(1, -5, 0, 45)
+            ToggleFrame.AutoButtonColor = false
+            ToggleFrame.Text = ""
+            CreateCorner(ToggleFrame, 6)
+            CreateStroke(ToggleFrame, Theme.ItemStroke, 1)
+
+            local Title = Instance.new("TextLabel")
+            Title.Parent = ToggleFrame
+            Title.BackgroundTransparency = 1
+            Title.Position = UDim2.new(0, 15, 0, 0)
+            Title.Size = UDim2.new(0.7, 0, 1, 0)
+            Title.Font = Enum.Font.GothamMedium
+            Title.Text = toggleName
+            Title.TextColor3 = Theme.Text
+            Title.TextSize = 14
+            Title.TextXAlignment = Enum.TextXAlignment.Left
+
+            -- Switch Graphic
+            local Switch = Instance.new("Frame")
+            Switch.Parent = ToggleFrame
+            Switch.BackgroundColor3 = Toggled and Theme.Accent or Color3.fromRGB(50, 50, 50)
+            Switch.Position = UDim2.new(1, -50, 0.5, -10)
+            Switch.Size = UDim2.new(0, 40, 0, 20)
+            CreateCorner(Switch, 20)
+
+            local Circle = Instance.new("Frame")
+            Circle.Parent = Switch
+            Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            Circle.Position = Toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+            Circle.Size = UDim2.new(0, 16, 0, 16)
+            CreateCorner(Circle, 16)
+
+            ToggleFrame.MouseButton1Click:Connect(function()
+                Toggled = not Toggled
+                callback(Toggled)
+                
+                local targetColor = Toggled and Theme.Accent or Color3.fromRGB(50, 50, 50)
+                local targetPos = Toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+                
+                TweenService:Create(Switch, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+                TweenService:Create(Circle, TweenInfo.new(0.2), {Position = targetPos}):Play()
+            end)
+        end
+
+        function Tab:Slider(options)
+            local sliderName = options.Name or "Slider"
+            local min = options.Min or 0
+            local max = options.Max or 100
+            local default = options.Default or min
+            local callback = options.Callback or function() end
+
+            local SliderFrame = Instance.new("Frame")
+            SliderFrame.Name = sliderName
+            SliderFrame.Parent = Page
+            SliderFrame.BackgroundColor3 = Theme.ItemBG
+            SliderFrame.Size = UDim2.new(1, -5, 0, 60)
+            CreateCorner(SliderFrame, 6)
+            CreateStroke(SliderFrame, Theme.ItemStroke, 1)
+
+            local Title = Instance.new("TextLabel")
+            Title.Parent = SliderFrame
+            Title.BackgroundTransparency = 1
+            Title.Position = UDim2.new(0, 15, 0, 10)
+            Title.Size = UDim2.new(1, -30, 0, 20)
+            Title.Font = Enum.Font.GothamMedium
+            Title.Text = sliderName
+            Title.TextColor3 = Theme.Text
+            Title.TextSize = 14
+            Title.TextXAlignment = Enum.TextXAlignment.Left
+
+            local ValueDisplay = Instance.new("TextLabel")
+            ValueDisplay.Parent = SliderFrame
+            ValueDisplay.BackgroundTransparency = 1
+            ValueDisplay.Position = UDim2.new(0, 15, 0, 10)
+            ValueDisplay.Size = UDim2.new(1, -30, 0, 20)
+            ValueDisplay.Font = Enum.Font.Gotham
+            ValueDisplay.Text = tostring(default)
+            ValueDisplay.TextColor3 = Theme.TextDim
+            ValueDisplay.TextSize = 14
+            ValueDisplay.TextXAlignment = Enum.TextXAlignment.Right
+
+            local SliderBar = Instance.new("Frame")
+            SliderBar.Parent = SliderFrame
+            SliderBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            SliderBar.Position = UDim2.new(0, 15, 0, 40)
+            SliderBar.Size = UDim2.new(1, -30, 0, 6)
+            CreateCorner(SliderBar, 3)
+
+            local Fill = Instance.new("Frame")
+            Fill.Parent = SliderBar
+            Fill.BackgroundColor3 = Theme.Accent
+            Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+            CreateCorner(Fill, 3)
+
+            local Trigger = Instance.new("TextButton")
+            Trigger.Parent = SliderBar
+            Trigger.BackgroundTransparency = 1
+            Trigger.Size = UDim2.new(1, 0, 1, 0)
+            Trigger.Text = ""
+
+            local dragging = false
+
+            local function Update(input)
+                local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+                local val = math.floor(min + ((max - min) * pos))
+                
+                TweenService:Create(Fill, TweenInfo.new(0.1), {Size = UDim2.new(pos, 0, 1, 0)}):Play()
+                ValueDisplay.Text = tostring(val)
+                callback(val)
             end
-            
-            Page.Visible = true
-            TabButton.TextColor3 = Library.Theme.Text
-            TabButton.BackgroundColor3 = Library.Theme.Background
-        end)
 
-        local TabLogic = {}
-
-        function TabLogic:Section(name)
-            local Groupbox = Instance.new("Frame")
-            Groupbox.Name = name
-            Groupbox.Parent = Page
-            Groupbox.BackgroundColor3 = Library.Theme.Background
-            Groupbox.BorderColor3 = Library.Theme.Outline
-            Groupbox.Size = UDim2.new(1, -5, 0, 0) -- Auto sized
-            
-            local GroupTitle = Instance.new("TextLabel")
-            GroupTitle.Parent = Groupbox
-            GroupTitle.BackgroundColor3 = Library.Theme.Background
-            GroupTitle.BorderColor3 = Library.Theme.Outline -- To hide line behind text
-            GroupTitle.BorderSizePixel = 0
-            GroupTitle.Position = UDim2.new(0, 10, 0, -8)
-            GroupTitle.Size = UDim2.new(0, 0, 0, 15) -- Auto width would require textbounds
-            GroupTitle.Font = Enum.Font.Code
-            GroupTitle.Text = " " .. name .. " "
-            GroupTitle.TextColor3 = Library.Theme.Accent
-            GroupTitle.TextSize = 12
-            GroupTitle.AutomaticSize = Enum.AutomaticSize.X
-
-            local GroupContent = Instance.new("Frame")
-            GroupContent.Parent = Groupbox
-            GroupContent.BackgroundTransparency = 1
-            GroupContent.Position = UDim2.new(0, 10, 0, 15)
-            GroupContent.Size = UDim2.new(1, -20, 1, -20)
-            
-            local GroupLayout = Instance.new("UIListLayout")
-            GroupLayout.Parent = GroupContent
-            GroupLayout.SortOrder = Enum.SortOrder.LayoutOrder
-            GroupLayout.Padding = UDim.new(0, 5)
-
-            GroupLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                Groupbox.Size = UDim2.new(1, -5, 0, GroupLayout.AbsoluteContentSize.Y + 25)
+            Trigger.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = true
+                    Update(input)
+                end
             end)
 
-            local SectionLogic = {}
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+            end)
 
-            function SectionLogic:Toggle(options)
-                local tname = options.Name
-                local def = options.Default or false
-                local callback = options.Callback or function() end
-                
-                Library.Flags[tname] = def
-
-                local ToggleFrame = Instance.new("TextButton")
-                ToggleFrame.Parent = GroupContent
-                ToggleFrame.BackgroundTransparency = 1
-                ToggleFrame.Size = UDim2.new(1, 0, 0, 20)
-                ToggleFrame.Text = ""
-
-                local Label = Instance.new("TextLabel")
-                Label.Parent = ToggleFrame
-                Label.BackgroundTransparency = 1
-                Label.Position = UDim2.new(0, 20, 0, 0)
-                Label.Size = UDim2.new(1, -20, 1, 0)
-                Label.Font = Enum.Font.Code
-                Label.Text = tname
-                Label.TextColor3 = Library.Theme.TextDim
-                Label.TextSize = 13
-                Label.TextXAlignment = Enum.TextXAlignment.Left
-
-                local Box = Instance.new("Frame")
-                Box.Parent = ToggleFrame
-                Box.BackgroundColor3 = Library.Theme.Section
-                Box.BorderColor3 = Library.Theme.Outline
-                Box.Size = UDim2.new(0, 14, 0, 14)
-                Box.Position = UDim2.new(0, 0, 0.5, -7)
-
-                local Indicator = Instance.new("Frame")
-                Indicator.Parent = Box
-                Indicator.BackgroundColor3 = Library.Theme.Accent
-                Indicator.BorderSizePixel = 0
-                Indicator.Position = UDim2.new(0, 2, 0, 2)
-                Indicator.Size = UDim2.new(1, -4, 1, -4)
-                Indicator.Visible = def
-                
-                if def then Label.TextColor3 = Library.Theme.Text end
-
-                ToggleFrame.MouseButton1Click:Connect(function()
-                    Library.Flags[tname] = not Library.Flags[tname]
-                    Indicator.Visible = Library.Flags[tname]
-                    Label.TextColor3 = Library.Flags[tname] and Library.Theme.Text or Library.Theme.TextDim
-                    callback(Library.Flags[tname])
-                end)
-            end
-
-            function SectionLogic:Button(options)
-                local bname = options.Name
-                local callback = options.Callback or function() end
-
-                local ButtonFrame = Instance.new("TextButton")
-                ButtonFrame.Parent = GroupContent
-                ButtonFrame.BackgroundColor3 = Library.Theme.Section
-                ButtonFrame.BorderColor3 = Library.Theme.Outline
-                ButtonFrame.Size = UDim2.new(1, 0, 0, 22)
-                ButtonFrame.Font = Enum.Font.Code
-                ButtonFrame.Text = bname
-                ButtonFrame.TextColor3 = Library.Theme.Text
-                ButtonFrame.TextSize = 13
-
-                ButtonFrame.MouseButton1Click:Connect(function()
-                    callback()
-                    TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {BackgroundColor3 = Library.Theme.Accent}):Play()
-                    task.wait(0.1)
-                    TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {BackgroundColor3 = Library.Theme.Section}):Play()
-                end)
-            end
-
-            function SectionLogic:Slider(options)
-                local sname = options.Name
-                local min = options.Min or 0
-                local max = options.Max or 100
-                local def = options.Default or min
-                local callback = options.Callback or function() end
-
-                Library.Flags[sname] = def
-
-                local SliderFrame = Instance.new("Frame")
-                SliderFrame.Parent = GroupContent
-                SliderFrame.BackgroundTransparency = 1
-                SliderFrame.Size = UDim2.new(1, 0, 0, 35)
-
-                local Label = Instance.new("TextLabel")
-                Label.Parent = SliderFrame
-                Label.BackgroundTransparency = 1
-                Label.Size = UDim2.new(1, 0, 0, 15)
-                Label.Font = Enum.Font.Code
-                Label.Text = sname
-                Label.TextColor3 = Library.Theme.Text
-                Label.TextSize = 13
-                Label.TextXAlignment = Enum.TextXAlignment.Left
-
-                local ValueLabel = Instance.new("TextLabel")
-                ValueLabel.Parent = SliderFrame
-                ValueLabel.BackgroundTransparency = 1
-                ValueLabel.Size = UDim2.new(1, 0, 0, 15)
-                ValueLabel.Font = Enum.Font.Code
-                ValueLabel.Text = tostring(def)
-                ValueLabel.TextColor3 = Library.Theme.TextDim
-                ValueLabel.TextSize = 13
-                ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
-
-                local SlideBG = Instance.new("TextButton") -- Using TextButton for input
-                SlideBG.Parent = SliderFrame
-                SlideBG.BackgroundColor3 = Library.Theme.Section
-                SlideBG.BorderColor3 = Library.Theme.Outline
-                SlideBG.Position = UDim2.new(0, 0, 0, 20)
-                SlideBG.Size = UDim2.new(1, 0, 0, 10)
-                SlideBG.Text = ""
-                SlideBG.AutoButtonColor = false
-
-                local Fill = Instance.new("Frame")
-                Fill.Parent = SlideBG
-                Fill.BackgroundColor3 = Library.Theme.Accent
-                Fill.BorderSizePixel = 0
-                Fill.Size = UDim2.new((def - min)/(max - min), 0, 1, 0)
-
-                local dragging = false
-                local function UpdateSlide(input)
-                    local pos = math.clamp((input.Position.X - SlideBG.AbsolutePosition.X) / SlideBG.AbsoluteSize.X, 0, 1)
-                    local val = math.floor(min + ((max - min) * pos))
-                    
-                    Fill.Size = UDim2.new(pos, 0, 1, 0)
-                    ValueLabel.Text = tostring(val)
-                    Library.Flags[sname] = val
-                    callback(val)
+            UserInputService.InputChanged:Connect(function(input)
+                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    Update(input)
                 end
-
-                SlideBG.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        dragging = true
-                        UpdateSlide(input)
-                    end
-                end)
-
-                table.insert(Connections, UserInputService.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-                end))
-
-                table.insert(Connections, UserInputService.InputChanged:Connect(function(input)
-                    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                        UpdateSlide(input)
-                    end
-                end))
-            end
-
-            return SectionLogic
+            end)
         end
 
-        return TabLogic
+        function Tab:Button(options)
+            local btnName = options.Name or "Button"
+            local callback = options.Callback or function() end
+
+            local BtnFrame = Instance.new("TextButton")
+            BtnFrame.Parent = Page
+            BtnFrame.BackgroundColor3 = Theme.ItemBG
+            BtnFrame.Size = UDim2.new(1, -5, 0, 40)
+            BtnFrame.AutoButtonColor = false
+            BtnFrame.Font = Enum.Font.GothamMedium
+            BtnFrame.Text = btnName
+            BtnFrame.TextColor3 = Theme.Text
+            BtnFrame.TextSize = 14
+            CreateCorner(BtnFrame, 6)
+            CreateStroke(BtnFrame, Theme.ItemStroke, 1)
+
+            BtnFrame.MouseButton1Click:Connect(function()
+                callback()
+                TweenService:Create(BtnFrame, TweenInfo.new(0.1), {BackgroundColor3 = Theme.Accent}):Play()
+                task.wait(0.1)
+                TweenService:Create(BtnFrame, TweenInfo.new(0.1), {BackgroundColor3 = Theme.ItemBG}):Play()
+            end)
+        end
+
+        return Tab
     end
-    
-    return WindowLogic
+
+    return Window
 end
 
 return Krita
