@@ -94,10 +94,12 @@ AutoTackle:OnChanged(function()
     if AutoTackle.Value then
         if not TackleRS then
             TackleRS = RunService.PreRender:Connect(function()
-                if LocalPlayer.Team and LocalPlayer.Team.Name ~= "Fans" and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                if LocalPlayer.Team and LocalPlayer.Team.Name ~= "Fans" and LocalPlayer.Character:FindFirstChild("  HumanoidRootPart") then
                     local ball = workspace:FindFirstChild("ball")
-                    if ball and not ball.Shot.Value then
-                        if IsLookingAt(LocalPlayer.Character:FindFirstChild("HumanoidRootPart"),ball.creator.Value.Character.PrimaryPart,18,7.5) and ball.creator.Value.Team ~= LocalPlayer.Team then
+                    if ball and not ball.Shot.Value and ball.creator.Value.Team ~= LocalPlayer.Team and ball.creator.Value.Character then
+                        local hb1 = ball.creator.Value.Character:FindFirstChild("Hitbox")
+                        local hb2 = LocalPlayer.Character:FindFirstChild("Hitbox")
+                        if hb1 and hb2 and IsLookingAt(hb1,hb2,18,7.5) then
                             --ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Action"):FireServer("TackIe")
                             if (workspace.Bools.APG.Value == LocalPlayer or workspace.Bools.HPG.Value == LocalPlayer) then
                                 VirtualInputManager:SendKeyEvent(true, "X", false, game)
