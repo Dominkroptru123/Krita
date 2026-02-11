@@ -65,7 +65,7 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.K
 })
 local Tabs = {
-    Combat = Window:AddTab({ Title = "Main", Icon = "ball" }),
+    Combat = Window:AddTab({ Title = "Main", Icon = "volleyball" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 --KillAura
