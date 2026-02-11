@@ -108,7 +108,6 @@ local function GetNearestEntity(range)
             if not IsAlive(v, true) then
                 continue -- skip dead NPCs
             end
-
             local part
             for _, v2 in v:GetChildren() do
                 if v2:IsA("BasePart") then
@@ -116,7 +115,6 @@ local function GetNearestEntity(range)
                     break
                 end
             end
-
             if part then
                 local distance = (part.Position - myPosition).Magnitude
                 if distance <= shortestDistance then
@@ -128,7 +126,6 @@ local function GetNearestEntity(range)
             end
         end
     end
-
     return nearestCharacter, shortestDistance, Root, entityType
 end
 local function GetInventory(Player)
@@ -170,18 +167,18 @@ local Tabs = {
 }
 --KillAura
 Tabs.Combat:AddSection("Kill Aura")
-local KillAura = Tabs.Combat:AddToggle("KillAura", {Title = "Kill Aura", Default = false })
+local KillAura = Tabs.Combat:AddToggle("KillAura", {Title = "Toggle", Default = false })
 local KillAuraRange = Tabs.Combat:AddSlider("KillAuraRange", {
-    Title = "Kill Aura Range",
-    Description = "Set max range for Kill Aura",
+    Title = "Range",
+    Description = "",
     Default = 27,
     Min = 16,
     Max = 29,
     Rounding = 0.1
 })
-local KillAuraAutoSwitch = Tabs.Combat:AddToggle("KillAuraAutoSwitch", {Title = "Kill Aura Auto Switch", Default = false })
+local KillAuraAutoSwitch = Tabs.Combat:AddToggle("KillAuraAutoSwitch", {Title = "Auto Switch", Default = false })
 local KillAuraTargets = Tabs.Combat:AddDropdown("KillAuraTargets", {
-    Title = "Kill Aura Targets",
+    Title = "Targets",
     Description = "",
     Values = {"Players", "NPCs"},
     Multi = true,
@@ -195,7 +192,7 @@ KillAuraTargets:OnChanged(function(target)
         end
     end
 end)
-local KillAuraKey = Tabs.Combat:AddKeybind("KillAuraKey", {Title = "Set keybind for Kill Aura", Mode = "Toggle", Default = ""})
+local KillAuraKey = Tabs.Combat:AddKeybind("KillAuraKey", {Title = "Bind", Mode = "Toggle", Default = ""})
 KillAuraKey:OnClick(function()
     Options.KillAura:SetValue(KillAuraKey:GetState())
     Fluent:Notify({
@@ -248,7 +245,7 @@ end)
 Tabs.Combat:AddSection("Projectile Aimbot")
 local ProjAimbotData = {
     Settings = {
-        Radius = 180,
+        Radius = 150,
         Color = Color3.fromRGB(255,255,255),
         Filled = false,
         Thickness = 2,
@@ -279,9 +276,9 @@ end
 ProjAimbotData.Data.RayParams.FilterType = Enum.RaycastFilterType.Blacklist
 ProjAimbotData.Data.RayParams.IgnoreWater = true
 local AimbotConnection
-local ProjectileAimbot = Tabs.Combat:AddToggle("ProjectileAimbot", {Title = "Projectile Aimbot",Default = false})
+local ProjectileAimbot = Tabs.Combat:AddToggle("ProjectileAimbot", {Title = "Toggle",Default = false})
 local ProjectileAimbotTargetPart = Tabs.Combat:AddDropdown("ProjectileAimbotTargetPart", {
-    Title = "Projectile Aimbot Target Part",
+    Title = "Target Part",
     Values = {"Head", "HumanoidRootPart"},
     Multi = false,
     Default = 1,
@@ -290,7 +287,7 @@ ProjectileAimbotTargetPart:OnChanged(function(Value)
     ProjAimbotData.Settings.TargetPart = ProjectileAimbotTargetPart.Value
 end)
 local ProjectileAimbotTargets = Tabs.Combat:AddDropdown("ProjectileAimbotTargets", {
-    Title = "Projectile Aimbot Targets",
+    Title = "Targets",
     Description = "",
     Values = {"Players", "NPCs"},
     Multi = true,
@@ -304,9 +301,23 @@ ProjectileAimbotTargets:OnChanged(function(target)
         end
     end
 end)
+local ProjectileAimbotFOVSize = Tabs.Combat:AddSlider("ProjectileAimbotFOVSize", {
+    Title = "FOV Size",
+    Description = "",
+    Default = 150,
+    Min = 10,
+    Max = 300,
+    Rounding = 0.1
+})
+ProjectileAimbotFOVSize:OnChanged(function(Value)
+    ProjAimbotData.Settings.Radius = tonumber(Value)
+    if ProjAimbotData.Data.Circle then
+        ProjAimbotData.Data.Circle.Radius = tonumber(Value)
+    end
+end)
 local ProjectileAimbotDistance = Tabs.Combat:AddSlider("ProjectileAimbotDistance", {
-    Title = "Projectile Aimbot Distance",
-    Description = "Set distance for Projectile Aimbot",
+    Title = "Distance",
+    Description = "",
     Default = 200,
     Min = 100,
     Max = 250,
@@ -314,6 +325,19 @@ local ProjectileAimbotDistance = Tabs.Combat:AddSlider("ProjectileAimbotDistance
 })
 ProjectileAimbotDistance:OnChanged(function(Value)
     ProjAimbotData.Settings.Distance = tonumber(Value)
+end)
+local ProjectileAimbotWallCheck = Tabs.Combat:AddToggle("ProjectileAimbotWallCheck", {Title = "Wall Check",Default = false})
+ProjectileAimbotWallCheck:OnChanged(function()
+    ProjAimbotData.Settings.WallCheck = ProjectileAimbotWallCheck.Value
+end)
+local ProjectileAimbotKey = Tabs.Combat:AddKeybind("ProjectileAimbotKey", {Title = "Bind", Mode = "Toggle", Default = ""})
+ProjectileAimbotKey:OnClick(function()
+    Options.ProjectileAimbot:SetValue(ProjectileAimbotKey:GetState())
+    Fluent:Notify({
+        Title = "Projectile Aimbot",
+        Content = "Projectile Aimbot has been " .. (ProjectileAimbot.Value and "enabled" or "disabled"),
+        Duration = 1
+    })
 end)
 ProjectileAimbot:OnChanged(function()
     if ProjectileAimbot.Value then
@@ -410,7 +434,16 @@ ProjectileAimbot:OnChanged(function()
 end)
 --Anti AFK
 Tabs.Utility:AddSection("Anti AFK")
-local AntiAFK = Tabs.Utility:AddToggle("AntiAFK", {Title = "Anti AFK", Default = false })
+local AntiAFK = Tabs.Utility:AddToggle("AntiAFK", {Title = "Toggle", Default = false })
+local AntiAFKKey = Tabs.Utility:AddKeybind("AntiAFKKey", {Title = "Bind", Mode = "Toggle", Default = ""})
+AntiAFKKey:OnClick(function()
+    Options.AntiAFK:SetValue(AntiAFKKey:GetState())
+    Fluent:Notify({
+        Title = "Anti AFK",
+        Content = "Anti AFK has been " .. (AntiAFK.Value and "enabled" or "disabled"),
+        Duration = 1
+    })
+end)
 AntiAFK:OnChanged(function()
     local enabled = AntiAFK.Value
     if enabled then
@@ -423,15 +456,24 @@ end)
 --Knockback
 Tabs.Utility:AddSection("Knockback")
 local OldApply = nil
-local Knockback = Tabs.Utility:AddToggle("Knockback", {Title = "Knockback", Default = false })
+local Knockback = Tabs.Utility:AddToggle("Knockback", {Title = "Toggle", Default = false })
 local KnockbackValue = Tabs.Utility:AddSlider("KnockbackValue", {
     Title = "Knockback Value",
-    Description = "Set value for Knockback",
+    Description = "",
     Default = 0,
     Min = 0.01,
     Max = 30,
     Rounding = 1
 })
+local KnockbackKey = Tabs.Utility:AddKeybind("KnockbackKey", {Title = "Bind", Mode = "Toggle", Default = ""})
+KnockbackKey:OnClick(function()
+    Options.Knockback:SetValue(KnockbackKey:GetState())
+    Fluent:Notify({
+        Title = "Knockback",
+        Content = "Knockback has been " .. (Knockback.Value and "enabled" or "disabled"),
+        Duration = 1
+    })
+end)
 Knockback:OnChanged(function()
     local enabled = Knockback.Value
     if enabled then
@@ -462,7 +504,16 @@ local function MakeRay(Char)
     FallRay.CollisionGroup = Char.PrimaryPart.CollisionGroup
     FallRay.FilterDescendantsInstances = {Char, workspace.CurrentCamera}
 end
-local NoFall = Tabs.Utility:AddToggle("NoFall", {Title = "No Fall", Default = false })
+local NoFall = Tabs.Utility:AddToggle("NoFall", {Title = "Toggle", Default = false })
+local NoFallKey = Tabs.Utility:AddKeybind("NoFallKey", {Title = "Bind", Mode = "Toggle", Default = ""})
+NoFallKey:OnClick(function()
+    Options. NoFall:SetValue(NoFallKey:GetState())
+    Fluent:Notify({
+        Title = "No Fall",
+        Content = "No Fall has been " .. (NoFall.Value and "enabled" or "disabled"),
+        Duration = 1
+    })
+end)
 NoFall:OnChanged(function()
     local enabled = NoFall.Value
     if enabled then
@@ -499,16 +550,16 @@ NoFall:OnChanged(function()
 end)
 --Fast Break
 Tabs.Utility:AddSection("Fast Break")
-local FastBreak = Tabs.Utility:AddToggle("FastBreak", {Title = "Fast Break", Default = false })
+local FastBreak = Tabs.Utility:AddToggle("FastBreak", {Title = "Toggle", Default = false })
 local FastBreakCooldown = Tabs.Utility:AddSlider("FastBreakCooldown", {
-    Title = "Fast Break Cooldown",
-    Description = "Set cooldown for Fast Break",
+    Title = "Cooldown",
+    Description = "",
     Default = 0.2,
     Min = 0.01,
     Max = 0.3,
     Rounding = 10
 })
-local FastBreakKey = Tabs.Utility:AddKeybind("FastBreakKey", {Title = "Set keybind for Fast Break", Mode = "Toggle", Default = ""})
+local FastBreakKey = Tabs.Utility:AddKeybind("FastBreakKey", {Title = "Bind", Mode = "Toggle", Default = ""})
 FastBreakKey:OnClick(function()
     Options.FastBreak:SetValue(FastBreakKey:GetState())
     Fluent:Notify({
@@ -530,16 +581,16 @@ FastBreak:OnChanged(function()
 end)
 --Far Break
 Tabs.Utility:AddSection("Far Break")
-local FarBreak = Tabs.Utility:AddToggle("FarBreak", {Title = "Far Break", Default = false })
+local FarBreak = Tabs.Utility:AddToggle("FarBreak", {Title = "Toggle", Default = false })
 local FarBreakRange = Tabs.Utility:AddSlider("FarBreakRange", {
-    Title = "Far Break Range",
-    Description = "Set range for Fast Break",
+    Title = "Range",
+    Description = "",
     Default = 25,
     Min = 18,
     Max = 50,
     Rounding = 0.1
 })
-local FarBreakKey = Tabs.Utility:AddKeybind("FarBreakKey", {Title = "Set keybind for Far Break", Mode = "Toggle", Default = ""})
+local FarBreakKey = Tabs.Utility:AddKeybind("FarBreakKey", {Title = "Bind", Mode = "Toggle", Default = ""})
 FarBreakKey:OnClick(function()
     Options.FarBreak:SetValue(FarBreakKey:GetState())
     Fluent:Notify({
