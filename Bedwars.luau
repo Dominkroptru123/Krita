@@ -169,6 +169,7 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 --KillAura
+Tabs.Combat:AddSection("Kill Aura")
 local KillAura = Tabs.Combat:AddToggle("KillAura", {Title = "Kill Aura", Default = false })
 local KillAuraRange = Tabs.Combat:AddSlider("KillAuraRange", {
     Title = "Kill Aura Range",
@@ -244,6 +245,7 @@ KillAura:OnChanged(function()
     end
 end)
 --Projectile Aimbot
+Tabs.Combat:AddSection("Projectile Aimbot")
 local ProjAimbotData = {
     Settings = {
         Radius = 180,
@@ -407,6 +409,7 @@ ProjectileAimbot:OnChanged(function()
     end
 end)
 --Anti AFK
+Tabs.Utility:AddSection("Anti AFK")
 local AntiAFK = Tabs.Utility:AddToggle("AntiAFK", {Title = "Anti AFK", Default = false })
 AntiAFK:OnChanged(function()
     local enabled = AntiAFK.Value
@@ -418,6 +421,7 @@ AntiAFK:OnChanged(function()
     end
 end)
 --Knockback
+Tabs.Utility:AddSection("Knockback")
 local OldApply = nil
 local Knockback = Tabs.Utility:AddToggle("Knockback", {Title = "Knockback", Default = false })
 local KnockbackValue = Tabs.Utility:AddSlider("KnockbackValue", {
@@ -443,6 +447,7 @@ Knockback:OnChanged(function()
     end
 end)
 --No Fall
+Tabs.Utility:AddSection("No Fall")
 local FallRay, Power = RaycastParams.new(), 0
 local function Physics(Delta)
     local Root = LocalPlayer.Character.PrimaryPart
@@ -493,6 +498,7 @@ NoFall:OnChanged(function()
     end
 end)
 --Fast Break
+Tabs.Utility:AddSection("Fast Break")
 local FastBreak = Tabs.Utility:AddToggle("FastBreak", {Title = "Fast Break", Default = false })
 local FastBreakCooldown = Tabs.Utility:AddSlider("FastBreakCooldown", {
     Title = "Fast Break Cooldown",
@@ -523,6 +529,7 @@ FastBreak:OnChanged(function()
     end
 end)
 --Far Break
+Tabs.Utility:AddSection("Far Break")
 local FarBreak = Tabs.Utility:AddToggle("FarBreak", {Title = "Far Break", Default = false })
 local FarBreakRange = Tabs.Utility:AddSlider("FarBreakRange", {
     Title = "Far Break Range",
