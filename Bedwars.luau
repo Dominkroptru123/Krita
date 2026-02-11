@@ -22,7 +22,8 @@ local GameUtils = {
     InventoryUtil = require(ReplicatedStorage.TS.inventory["inventory-util"]).InventoryUtil,
     BlockBreaker = Knit.Controllers.BlockBreakController.blockBreaker,
     Knockback = require(ReplicatedStorage.TS.damage["knockback-util"]).KnockbackUtil,
-    Projectile = Knit.Controllers.ProjectileController
+    Projectile = Knit.Controllers.ProjectileController,
+    Sprint = Knit.Controllers.SprintController
 }
 --RS
 local connection
@@ -163,6 +164,7 @@ local Window = Fluent:CreateWindow({
 local Tabs = {
     Combat = Window:AddTab({ Title = "Combat", Icon = "sword" }),
     Utility = Window:AddTab({ Title = "Utility", Icon = "wrench" }),
+    Movement = Window:AddTab({ Title = "Movement", Icon = "rocket" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 --KillAura
@@ -454,10 +456,10 @@ AntiAFK:OnChanged(function()
     end
 end)
 --Knockback
-Tabs.Utility:AddSection("Knockback")
+Tabs.Movement:AddSection("Knockback")
 local OldApply = nil
-local Knockback = Tabs.Utility:AddToggle("Knockback", {Title = "Toggle", Default = false })
-local KnockbackValue = Tabs.Utility:AddSlider("KnockbackValue", {
+local Knockback = Tabs.Movement:AddToggle("Knockback", {Title = "Toggle", Default = false })
+local KnockbackValue = Tabs.Movement:AddSlider("KnockbackValue", {
     Title = "Knockback Value",
     Description = "",
     Default = 0,
@@ -465,7 +467,7 @@ local KnockbackValue = Tabs.Utility:AddSlider("KnockbackValue", {
     Max = 30,
     Rounding = 1
 })
-local KnockbackKey = Tabs.Utility:AddKeybind("KnockbackKey", {Title = "Bind", Mode = "Toggle", Default = ""})
+local KnockbackKey = Tabs.Movement:AddKeybind("KnockbackKey", {Title = "Bind", Mode = "Toggle", Default = ""})
 KnockbackKey:OnClick(function()
     Options.Knockback:SetValue(KnockbackKey:GetState())
     Fluent:Notify({
@@ -489,7 +491,7 @@ Knockback:OnChanged(function()
     end
 end)
 --No Fall
-Tabs.Utility:AddSection("No Fall")
+Tabs.Movement:AddSection("No Fall")
 local FallRay, Power = RaycastParams.new(), 0
 local function Physics(Delta)
     local Root = LocalPlayer.Character.PrimaryPart
@@ -504,8 +506,8 @@ local function MakeRay(Char)
     FallRay.CollisionGroup = Char.PrimaryPart.CollisionGroup
     FallRay.FilterDescendantsInstances = {Char, workspace.CurrentCamera}
 end
-local NoFall = Tabs.Utility:AddToggle("NoFall", {Title = "Toggle", Default = false })
-local NoFallKey = Tabs.Utility:AddKeybind("NoFallKey", {Title = "Bind", Mode = "Toggle", Default = ""})
+local NoFall = Tabs.Movement:AddToggle("NoFall", {Title = "Toggle", Default = false })
+local NoFallKey = Tabs.Movement:AddKeybind("NoFallKey", {Title = "Bind", Mode = "Toggle", Default = ""})
 NoFallKey:OnClick(function()
     Options. NoFall:SetValue(NoFallKey:GetState())
     Fluent:Notify({
@@ -569,8 +571,7 @@ FastBreakKey:OnClick(function()
     })
 end)
 FastBreak:OnChanged(function()
-    local enabled = FastBreak.Value
-    if enabled then
+    if FastBreak.Value then
         repeat
             GameUtils.BlockBreaker.cooldown = tonumber(FastBreakCooldown.Value)
             task.wait(0.5)
@@ -600,14 +601,43 @@ FarBreakKey:OnClick(function()
     })
 end)
 FarBreak:OnChanged(function()
-    local enabled = FarBreak.Value
-    if enabled then
+    if FarBreak.Value then
         repeat
             GameUtils.BlockBreaker.range = tonumber(FarBreakRange.Value)
             task.wait(0.5)
         until not FarBreak.Value
     else
         GameUtils.BlockBreaker.range = 18
+    end
+end)
+--Sprint
+local OldSprint
+Tabs.Movement:AddSection("Sprint")
+local Sprint = Tabs.Movement:AddToggle("Sprint", {Title = "Toggle", Default = false })
+local SprintKey = Tabs.Movement:AddKeybind("SprintKey", {Title = "Bind", Mode = "Toggle", Default = ""})
+SprintKey:OnClick(function()
+    Options.Sprint:SetValue(SprintKey:GetState())
+    Fluent:Notify({
+        Title = "Sprint",
+        Content = "Sprint has been " .. (Sprint.Value and "enabled" or "disabled"),
+        Duration = 1
+    })
+end)
+Sprint:OnChanged(function()
+    if Sprint.Value then
+        OldSprint = GameUtils.Sprint.stopSprinting
+        GameUtils.Sprint.stopSprinting = function()
+            return
+        end
+        repeat task.wait()
+            if not GameUtils.Sprint:isSprinting() then
+                GameUtils.Sprint:startSprinting()
+            end
+        until not Sprint.Value
+    else
+        if OldSprint then
+            GameUtils.Sprint.stopSprinting = OldSprint
+        end
     end
 end)
 SaveManager:SetLibrary(Fluent)
