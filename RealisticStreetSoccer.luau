@@ -85,7 +85,7 @@ AutoDive:OnChanged(function()
             DiveRS = RunService.PreRender:Connect(function()
                 if LocalPlayer.Team and LocalPlayer.Team.Name ~= "Fans" and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     local ball = workspace:FindFirstChild("ball")
-                    if ball and ball.AssemblyLinearVelocity.Magnitude >= math.sqrt(1600) and (workspace.Bools.APG.Value == LocalPlayer or workspace.Bools.HPG.Value == LocalPlayer) then
+                    if ball and ball.AssemblyLinearVelocity.Magnitude >= math.sqrt(2500) and (workspace.Bools.APG.Value == LocalPlayer or workspace.Bools.HPG.Value == LocalPlayer) then
                         Dive(ball, LocalPlayer.Character)
                     end
                 end
