@@ -18,34 +18,39 @@ local LocalPlayer = Players.LocalPlayer
 --RS
 local DiveRS
 local TackleRS
+local DekeRS
 --Functions
 local function IsLookingAt(partA, partB, maxDistance, angle)
     maxDistance = maxDistance or 20
     local origin = partA.Position
     local target = partB.Position
     if (target - origin).Magnitude > maxDistance then return false end
-    return partA.CFrame.LookVector:Dot((target - origin).Unit) > math.cos(math.rad(angle))
+    return partA.CFrame.LookVector:Dot((target - origin).Unit) >= math.cos(math.rad(angle))
+end
+local function IsTackling(model)
+    if model.HumanoidRootPart.AssemblyLinearVelocity.X^2 + model.HumanoidRootPart.AssemblyLinearVelocity.Z^2 >= 1600 then
+        return true
+    end
+    return false
 end
 local function Dive(ball, player)
     local hrp = player:FindFirstChild("Hitbox") or player:FindFirstChild("HumanoidRootPart")
-    if not hrp then return "Still" end
+    if not hrp then return end
     local ballPos = ball.Position
     local ballVel = ball.AssemblyLinearVelocity
-    if ballVel.Magnitude < 1 then return "Still" end
+    if ballVel.Magnitude < 1 then return end
     local gkPos = hrp.Position
     local gkForward = hrp.CFrame.LookVector
-    local gkRight = hrp.CFrame.RightVector
-    local toGK = gkPos - ballPos
-    if ballVel:Dot(toGK.Unit) <= 0 then return "Still" end
-    local forwardComponent = ballVel:Dot(gkForward)
-    if math.abs(forwardComponent) < 1 then return "Still" end
-    local timeToPlane = toGK:Dot(gkForward) / forwardComponent
-    if timeToPlane < 0 then return "Still" end
-    local predictedPos = ballPos + ballVel * timeToPlane
-    local flatGKPos = Vector3.new(gkPos.X, ballPos.Y, gkPos.Z)
-    local offset = (predictedPos - flatGKPos):Dot(gkRight)
-    --local offset = (predictedPos - gkPos):Dot(gkRight)
-    local diveThreshold = 5
+    if (ballPos - gkPos).Magnitude >= 50 then return end
+    local relativePos = ballPos - gkPos
+    local denominator = ballVel:Dot(gkForward)
+    if math.abs(denominator) < 0.01 then return end
+    local timeToPlane = -relativePos:Dot(gkForward) / denominator
+    if timeToPlane <= 0 then return end
+    local predictedPos = ballPos + ballVel * timeToPlane + 0.5 * Vector3.new(0, -workspace.Gravity, 0) * (timeToPlane ^ 2)
+    local offset = (predictedPos - gkPos):Dot(hrp.CFrame.RightVector)
+    local diveThreshold = 8
+    local jumpThreshold = 8
     if offset > diveThreshold then
         VirtualInputManager:SendKeyEvent(true, "E", false, game)
         VirtualInputManager:SendKeyEvent(false, "E", false, game)
@@ -53,6 +58,10 @@ local function Dive(ball, player)
         VirtualInputManager:SendKeyEvent(true, "Q", false, game)
         VirtualInputManager:SendKeyEvent(false, "Q", false, game)
     else return end
+    if predictedPos.Y - gkPos.Y > jumpThreshold then
+        VirtualInputManager:SendKeyEvent(true, "Space", false, game)
+        VirtualInputManager:SendKeyEvent(false, "Space", false, game)
+    end
 end
 --Fluent
 local Window = Fluent:CreateWindow({
@@ -68,7 +77,7 @@ local Tabs = {
     Combat = Window:AddTab({ Title = "Main", Icon = "volleyball" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
---KillAura
+--Auto Dive
 local AutoDive = Tabs.Combat:AddToggle("AutoDive", {Title = "Auto Dive", Default = false })
 AutoDive:OnChanged(function()
     if AutoDive.Value then
@@ -76,7 +85,7 @@ AutoDive:OnChanged(function()
             DiveRS = RunService.PreRender:Connect(function()
                 if LocalPlayer.Team and LocalPlayer.Team.Name ~= "Fans" and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     local ball = workspace:FindFirstChild("ball")
-                    if ball and ball.Shot.Value and (ball.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= 40 and (workspace.Bools.APG.Value == LocalPlayer or workspace.Bools.HPG.Value == LocalPlayer) then
+                    if ball and ball.AssemblyLinearVelocity.Magnitude >= math.sqrt(1600) and (workspace.Bools.APG.Value == LocalPlayer or workspace.Bools.HPG.Value == LocalPlayer) then
                         Dive(ball, LocalPlayer.Character)
                     end
                 end
@@ -89,22 +98,23 @@ AutoDive:OnChanged(function()
         end
     end
 end)
+--Auto Tackle
 local AutoTackle = Tabs.Combat:AddToggle("AutoTackle", {Title = "Auto Tackle", Default = false })
 AutoTackle:OnChanged(function()
     if AutoTackle.Value then
         if not TackleRS then
             TackleRS = RunService.PreRender:Connect(function()
-                if LocalPlayer.Team and LocalPlayer.Team.Name ~= "Fans" and LocalPlayer.Character:FindFirstChild("  HumanoidRootPart") then
+                if LocalPlayer.Team and LocalPlayer.Team.Name ~= "Fans" and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     local ball = workspace:FindFirstChild("ball")
                     if ball and not ball.Shot.Value and ball.creator.Value.Team ~= LocalPlayer.Team and ball.creator.Value.Character then
-                        local hb1 = ball.creator.Value.Character:FindFirstChild("Hitbox")
-                        local hb2 = LocalPlayer.Character:FindFirstChild("Hitbox")
-                        if hb1 and hb2 and IsLookingAt(hb1,hb2,18,7.5) then
+                        local hb1 = ball.creator.Value.Character.PrimaryPart
+                        local hb2 = LocalPlayer.Character.PrimaryPart
+                        if hb1 and hb2 and IsLookingAt(hb2,hb1,25,15) then
                             --ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Action"):FireServer("TackIe")
                             if (workspace.Bools.APG.Value == LocalPlayer or workspace.Bools.HPG.Value == LocalPlayer) then
                                 VirtualInputManager:SendKeyEvent(true, "X", false, game)
                                 VirtualInputManager:SendKeyEvent(false, "X", false, game)
-                            elseif not ball.creator.Value.Character.LocalBool.Skill.Value then
+                            else
                                 VirtualInputManager:SendKeyEvent(true, "E", false, game)
                                 VirtualInputManager:SendKeyEvent(false, "E", false, game)
                             end
@@ -118,6 +128,44 @@ AutoTackle:OnChanged(function()
             TackleRS:Disconnect()
             TackleRS = nil
         end
+    end
+end)
+local AutoDeke = Tabs.Combat:AddToggle("AutoDeke", {Title = "Auto Deke", Default = false })
+AutoDeke:OnChanged(function()
+    if AutoDeke.Value then
+        if not DekeRS then
+            DekeRS = RunService.PreRender:Connect(function()
+                if LocalPlayer.Team and LocalPlayer.Team.Name ~= "Fans" and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local ball = workspace:FindFirstChild("ball")
+                    if ball and not ball.Shot.Value and ball.creator.Value == LocalPlayer and not (workspace.Bools.APG.Value == LocalPlayer or workspace.Bools.HPG.Value == LocalPlayer) then
+                        for _, i in Players:GetChildren() do
+                            if i ~= LocalPlayer and i.Character and i.Character:FindFirstChild("HumanoidRootPart") then
+                                if IsLookingAt(i.Character.PrimaryPart,LocalPlayer.Character.PrimaryPart,35,30) and IsTackling(i.Character) then
+                                    ReplicatedStorage.Remotes.Action:FireServer("Deke")
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    else
+        if DekeRS then
+            DekeRS:Disconnect()
+            DekeRS = nil
+        end
+    end
+end)
+local AntiAFK = Tabs.Combat:AddToggle("AntiAFK", {Title = "Anti AFK", Default = false })
+AntiAFK:OnChanged(function()
+    if AntiAFK.Value then
+        repeat task.wait(20)
+            if LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity.X < 1 and LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity.Z < 1 then
+                VirtualInputManager:SendKeyEvent(true, "W", false, game)
+                task.wait(0.05)
+                VirtualInputManager:SendKeyEvent(false, "W", false, game)
+            end
+        until not AntiAFK.Value
     end
 end)
 SaveManager:SetLibrary(Fluent)
